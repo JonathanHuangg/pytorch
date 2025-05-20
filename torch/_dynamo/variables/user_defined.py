@@ -105,6 +105,10 @@ def is_standard_setattr(val):
     return val in (object.__setattr__, BaseException.__setattr__)
 
 
+def is_standard_delattr(val):
+    return val in (object.__delattr__, BaseException.__delattr__)
+
+
 def is_forbidden_context_manager(ctx):
     f_ctxs = []
 
@@ -861,6 +865,9 @@ class UserDefinedObjectVariable(UserDefinedVariable):
             if is_standard_setattr(method) or isinstance(self.value, threading.local):
                 return self.method_setattr_standard(tx, *args, **kwargs)
 
+            if is_standard_delattr(method):
+                return self.method_delattr_standard(tx, args[0])
+
             if method is object.__eq__ and len(args) == 1 and not kwargs:
                 other = args[0]
                 if not isinstance(other, UserDefinedObjectVariable):
@@ -906,6 +913,21 @@ class UserDefinedObjectVariable(UserDefinedVariable):
             unimplemented(f"setattr({self}, {name}, ...)")
 
         tx.output.side_effects.store_attr(self, name, value)
+        return variables.ConstantVariable(None)
+
+    def method_delattr_standard(self, tx: "InstructionTranslator", name):
+        from . import ConstantVariable
+
+        if isinstance(name, str):
+            name = ConstantVariable.create(name)
+        try:
+            name = name.as_python_constant()
+        except NotImplementedError:
+            unimplemented(f"non-const delattr name: {name}")
+        if not tx.output.side_effects.is_attribute_mutation(self):
+            unimplemented(f"delattr({self}, {name})")
+
+        tx.output.side_effects.store_attr(self, name, variables.DeletedVariable())
         return variables.ConstantVariable(None)
 
     def needs_slow_setattr(self):
