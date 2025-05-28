@@ -160,7 +160,7 @@ def trace_files():
     return TRACE1, TRACE2
 
 
-def omni_model(device, dtype, compile=True, addmm=True, bmm=True):
+def test_model(device, dtype, compile=True, addmm=True, bmm=True):
     T = cT(device, dtype)
 
     def model():
@@ -275,7 +275,7 @@ class TestAnalysis(TestCase):
         if device == "cpu":
             # TODO cpu support
             return
-        om = omni_model(device, dtype)
+        om = test_model(device, dtype)
         REPEAT = 5
         trace1, trace2 = trace_files()
         print("first trace")
@@ -324,7 +324,7 @@ class TestAnalysis(TestCase):
         if device == "cpu":
             # cpu doesn't produce traces currently
             return
-        om = omni_model(device, dtype)
+        om = test_model(device, dtype)
         torch._dynamo.reset()  # reset the cache
         with fresh_inductor_cache():
             with torch.profiler.profile(record_shapes=True) as p:
@@ -395,7 +395,7 @@ class TestAnalysis(TestCase):
         if device == "cpu":
             return
         max_autotune, backends = maxat
-        om = omni_model(device, dtype, bmm=False)
+        om = test_model(device, dtype, bmm=False)
         comp_omni = torch.compile(
             om,
             options={
@@ -505,7 +505,7 @@ class TestAnalysis(TestCase):
         max_autotune, backends = maxat
         if device == "cpu":
             return
-        om = omni_model(device, dtype, compile=False)
+        om = test_model(device, dtype, compile=False)
 
         comp_omni = torch.compile(
             om,
