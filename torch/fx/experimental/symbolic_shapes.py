@@ -1370,6 +1370,13 @@ def sym_or(x: BoolLikeType, *others: BoolLikeType) -> BoolLikeType:
     return x
 
 
+def sym_not(x: _T) -> BoolLikeType:
+    """
+    Like `not x`
+    """
+    return x == False  # noqa: E712
+
+
 def guard_scalar(
     a: Union[SymBool, SymInt, SymFloat, int, bool, float]
 ) -> Union[bool, int, float]:
