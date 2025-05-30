@@ -2117,7 +2117,7 @@ def get_device_tflops(dtype: torch.dtype) -> float:
     We don't want to throw errors in this function. First check to see if the device is in device_info.py,
     then fall back to the inaccurate triton estimation.
     """
-    ds_tops = datasheet_tops(dtype)
+    ds_tops = datasheet_tops(dtype, is_tf32=torch.backends.cuda.matmul.allow_tf32)
     if ds_tops is not None:
         return ds_tops
 
@@ -3109,11 +3109,11 @@ def tabulate_2d(elements: Sequence[Sequence[T]], headers: Sequence[T]) -> str:
 
 
 def zip_dicts(
-    dict1: dict[Any, Any],
-    dict2: dict[Any, Any],
-    d1_default: Any = None,
-    d2_default: Any = None,
-) -> Generator[tuple[Any, Any, Any], None, None]:
+    dict1: dict[KeyType, ValType],
+    dict2: dict[KeyType, ValType],
+    d1_default: ValType = None,
+    d2_default: ValType = None,
+) -> Generator[tuple[KeyType, ValType, ValType], None, None]:
     """
     Zip two dictionaries together, replacing missing keys with default values.
 

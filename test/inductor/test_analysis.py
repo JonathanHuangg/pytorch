@@ -220,6 +220,21 @@ def test_model(device, dtype, compile=True, addmm=True, bmm=True):
         )
     return model
 
+def pointwise_test_model(device, dtype, compile=True):
+    T = cT(device, dtype)
+    def model():
+        M = 256
+        N = 512
+        mat3 = T(M, N)
+        mat4 = T(M, N)
+        pointwise_output = torch.add(mat3, mat4).sin()
+        return pointwise_output
+    if compile:
+        return torch.compile(
+            model, options={"benchmark_kernel": True, "profile_bandwidth": True}
+        )
+    return model
+    
 
 prefix = ["profile.py"]
 
@@ -593,6 +608,41 @@ class TestAnalysis(TestCase):
         self.assertTrue(seen_bmm)
         self.assertTrue(seen_baddbmm)
         self.assertTrue(seen_conv)
+    @skipIf(not SM70OrLater, "Requires sm70")
+    @dtypes(torch.float, torch.float16)
+    @parametrize(
+        "maxat",
+        [
+            (False, "ATEN,TRITON"),
+            (True, "ATEN,TRITON"),
+            (True, "ATEN"),
+            (True, "TRITON"),
+        ],
+    )
+    @unittest.skipIf(
+        not IS_BIG_GPU, "we can't use Triton only as a backend for max autotune"
+    )
+    def test_pointwise_bandwidth(self, device, dtype, maxat):
+        # this tests to see if we can only use a Triton backend for max autotune
+        max_autotune, backends = maxat
+        if device == "cpu":
+            return
+        om = pointwise_test_model(device, dtype, compile=False)
+        comp_omni = torch.compile(
+            om,
+            # options={
+            #     "benchmark_kernel": True,
+            #     "max_autotune_gemm_backends": backends,
+            #     "force_disable_caches": True,
+            #     "max_autotune": max_autotune,
+            # },
+        )
+        comp_omni()
+
+        torch._dynamo.reset()  # reset the cache
+        with fresh_inductor_cache():
+            with torch.profiler.profile(record_shapes=True) as profile:
+                comp_omni()
 
 
 instantiate_device_type_tests(TestAnalysis, globals())

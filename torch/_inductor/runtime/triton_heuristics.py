@@ -1102,7 +1102,7 @@ class CachingAutotuner(KernelInterface):
             f"{k}={v}" for (k, v) in launcher.config.kwargs.items()
         )
 
-        return {
+        ret = {
             "kernel_file": (self.filename or ""),
             "kernel_hash": self.kernel_hash,
             "kernel_backend": "triton",
@@ -1110,9 +1110,11 @@ class CachingAutotuner(KernelInterface):
             "num_warps": launcher.config.num_warps,
             "num_stages": launcher.config.num_stages,
             "kernel_kwargs": kernel_kwargs_str,
-            "kernel_num_gb": self.inductor_meta.get("kernel_num_gb", None),
-            "kernel_flop": self.inductor_meta.get("kernel_flop", None),
         }
+        if "kernel_name" in self.inductor_meta:
+            ret["kernel_name"] = self.inductor_meta["kernel_name"]
+        if "kernel_flop" in self.inductor_meta:
+            ret["kernel_flop"] = self.inductor_meta["kernel_flop"]
 
     def run(
         self,
