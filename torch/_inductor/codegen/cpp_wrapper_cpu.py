@@ -13,7 +13,7 @@ import sympy
 
 import torch
 import torch._higher_order_ops.torchbind
-import torch._inductor.async_compile  # noqa: F401 required to warm up AsyncCompile pools
+import torch._inductor.async_compile
 import torch._ops
 from torch._inductor.runtime.runtime_utils import dynamo_timed
 from torch.fx.experimental.symbolic_shapes import ConvertIntKey, DivideByKey, SymTypes
@@ -195,11 +195,12 @@ class CppWrapperCpu(PythonWrapperCodegen):
 
         if not V.graph.aot_mode:
             self.header.splice(
-                """
+                f"""
                 import torch
-                from torch._inductor.codecache import CppWrapperCodeCache
+                from {torch._inductor.async_compile.__name__} import AsyncCompile
 
-                cpp_wrapper_src = (
+                async_compile = AsyncCompile()
+                src_code = [
                 r'''
                 """
             )
@@ -1088,28 +1089,24 @@ class CppWrapperCpu(PythonWrapperCodegen):
             return
 
         # Close the wrapper code block, then write any kernel definitions.
-        result.splice("'''\n)")
+        result.splice("''',\n")
         if self.kernel_declarations:
-            result.splice("\nkernel_src = (\nr'''")
+            result.splice("r'''")
             result.splice(self.kernel_declarations.getvalue())
-            result.splice("'''\n)")
-        else:
-            result.splice(
-                """
-                kernel_src = ''
-                """
-            )
+            result.splice("''',")
+        result.splice("]")
 
         # cpp entry function for JIT with cpp wrapper
         result.splice(
             f"""
-            inductor_entry = CppWrapperCodeCache.load_pybinding(
+            inductor_entry = async_compile.cpp_wrapper(
                 argtypes=["std::vector<AtenTensorHandle>"],
-                main_code=cpp_wrapper_src,
+                code=src_code,
                 device_type="{self.device}",
                 num_outputs={len(V.graph.graph_outputs)},
-                kernel_code=kernel_src,
             )
+            async_compile.wait(globals())
+            del async_compile
             """
         )
 
