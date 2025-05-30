@@ -1672,6 +1672,7 @@ class AotCodeCompiler:
             "wrapper.cpp",
             extra=cpp_command,
             specified_dir=specified_output_path,
+            key=config.aot_inductor.model_name_for_generated_files,
         )
         kernel_code = (
             f"// Triton kernels are embedded as comments in {wrapper_path}\n"
@@ -1682,6 +1683,7 @@ class AotCodeCompiler:
             "kernel.cpp",
             extra=cpp_command,
             specified_dir=specified_output_path,
+            key=config.aot_inductor.model_name_for_generated_files,
         )
 
         # Log the AOTInductor wrapper and kernel code, if needed.
