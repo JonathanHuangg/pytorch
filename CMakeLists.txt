@@ -587,6 +587,7 @@ if(MSVC)
         string(REGEX REPLACE "/MT" "/MD" ${flag_var} "${${flag_var}}")
       endif()
     endif()
+    set(${flag_var} "${${flag_var}} /FS")
 
     # /bigobj increases number of sections in .obj file, which is needed to link
     # against libraries in Python 2.7 under Windows For Visual Studio
